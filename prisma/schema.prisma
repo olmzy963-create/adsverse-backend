@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  kycStatus     String   @default("unverified")
+  wallet        Wallet?
+  sessions      AdReelSession[]
+  txns          WalletTransaction[]
+}
+model Wallet {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  pendingP     Int      @default(0)
+  availableP   Int      @default(0)
+  paidOutP     Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  User         User     @relation(fields: [userId], references: [id])
+  txns         WalletTransaction[]
+}
+model WalletTransaction {
+  id           String   @id @default(cuid())
+  userId       String
+  type         String
+  status       String
+  amountUserP  Int
+  amountHouseP Int
+  sessionId    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  User         User     @relation(fields: [userId], references: [id])
+  @@index([userId, status, createdAt])
+}
+model AdReelSession {
+  id                 String   @id @default(cuid())
+  userId             String
+  mode               String   @default("combo")
+  adNetwork          String?
+  surveyNetwork      String?
+  adOfferId          String?
+  surveyId           String?
+  adVerified         Boolean  @default(false)
+  surveyVerified     Boolean  @default(false)
+  postbackAdSig      String?
+  postbackSurveySig  String?
+  status             String   @default("created")
+  walletTxnId        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  User               User     @relation(fields: [userId], references: [id])
+  @@index([mode, status])
+  @@index([userId, createdAt])
+}
