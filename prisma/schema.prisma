@@ -29,6 +29,9 @@ model Wallet {
 model WalletTransaction {
   id           String   @id @default(cuid())
   userId       String
+  User         User     @relation(fields: [userId], references: [id])
+  walletId     String
+  Wallet       Wallet   @relation(fields: [walletId], references: [id])
   type         String
   status       String
   amountUserP  Int
@@ -36,8 +39,8 @@ model WalletTransaction {
   sessionId    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  User         User     @relation(fields: [userId], references: [id])
   @@index([userId, status, createdAt])
+  @@index([walletId, createdAt])
 }
 model AdReelSession {
   id                 String   @id @default(cuid())

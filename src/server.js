@@ -26,8 +26,17 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 
 app.get("/api/wallet", async (req, res) => {
   const userId = req.user.id;
-  const w = await prisma.wallet.upsert({ where: { userId }, create: { userId }, update: {} });
-  res.json({ pending: w.pendingP, available: w.availableP, paid: w.paidOutP });
+  await prisma.user.upsert({
+    where: { id: userId },
+    create: { id: userId, email: `${userId}@example.com` },
+    update: {}
+  });
+  const wallet = await prisma.wallet.upsert({
+    where: { userId },
+    create: { userId },
+    update: {}
+  });
+  res.json({ pending: wallet.pendingP, available: wallet.availableP, paid: wallet.paidOutP });
 });
 
 app.post("/api/reel/session/start", async (req, res) => {
@@ -36,12 +45,24 @@ app.post("/api/reel/session/start", async (req, res) => {
   res.json({ session_id: s.id, ad_offer_id: `adgem_${Date.now()}`, survey_prefetch_url: `https://example.com/survey?uid=${userId}&sid=${s.id}` });
 });
 
-app.post("/api/reel/ad/locally_completed", async (_req, res) => { res.json({ ok: true }); });
+app.post("/api/reel/ad/locally_completed", async (_req, res) => res.json({ ok: true }));
+
 app.post("/api/reel/survey/locally_done", async (req, res) => {
   const userId = req.user.id;
   const { session_id } = req.body || {};
-  const totalP = 6; const userP = Math.round(totalP * 0.55); const houseP = totalP - userP;
-  const txn = await prisma.walletTransaction.create({ data: { userId, type: "combo_unit", status: "pending", amountUserP: userP, amountHouseP: houseP, sessionId: session_id } });
+  const totalP = 6;
+  const userP = Math.round(totalP * 0.55);
+  const houseP = totalP - userP;
+
+  const wallet = await prisma.wallet.upsert({
+    where: { userId },
+    create: { userId },
+    update: {}
+  });
+
+  const txn = await prisma.walletTransaction.create({
+    data: { userId, walletId: wallet.id, type: "combo_unit", status: "pending", amountUserP: userP, amountHouseP: houseP, sessionId: session_id }
+  });
   await prisma.adReelSession.update({ where: { id: session_id }, data: { walletTxnId: txn.id } }).catch(() => {});
   res.json({ ok: true, pending_txn_id: txn.id });
 });
